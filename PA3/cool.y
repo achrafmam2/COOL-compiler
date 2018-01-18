@@ -175,6 +175,8 @@
                     $$ = append_Classes($1,single_Classes($2));
                     parse_results = $$;
                  }
+               | error { @$ = @1; SET_NODELOC(@1); }
+               | class_list error { @$ = @2; SET_NODELOC(@2); }
                ;
     
     /* If no parent is specified, the class inherits from the Object class. */
@@ -219,6 +221,12 @@
                                $$ = append_Features($1, single_Features($2));
                              }
                            | feature ';' { $$ = single_Features($1); }
+                           | error ';' { @$ = @1; SET_NODELOC(@1); }
+                           | not_empty_feature_list error ';'
+                             {
+                               @$ = @2;
+                               SET_NODELOC(@2);
+                             }
                            ;
     
     /* Formal */
@@ -248,7 +256,7 @@
                             | not_empty_argument_list ',' expr 
                               {
                                 $$ = append_Expressions($1,
-                                        single_Expressions($3));
+                                single_Expressions($3));
                               }
                             ;
     
@@ -258,6 +266,12 @@
                         $$ = append_Expressions($1, single_Expressions($2));
                       }
                     | expr ';' { $$ = single_Expressions($1); }
+                    | error ';' { @$ = @1; SET_NODELOC(@1); }
+                    | block_expr_list error ';'
+                      {
+                        @$ = @2;
+                        SET_NODELOC(@2);
+                      }
                     ;
 
     /* Let expression */
@@ -277,6 +291,10 @@
                {
                  $$ = let($1, $3, $5, $7);
                }
+
+             /* handle errors: an error in one binding should not affect 
+                the other ones */
+             | error ',' let_expr { @$ = @1; SET_NODELOC(@1); }
              ;
 
     /* Case statements */
@@ -322,6 +340,7 @@
 
            /* block */
          | '{' block_expr_list '}' { $$ = block($2); }
+         | '{' error '}' { @$ = @2; SET_NODELOC(@2); }
 
            /* let declaration */
          | LET let_expr { $$ = $2; }
@@ -333,6 +352,7 @@
          | ISVOID expr { $$ = isvoid($2); }
          | NOT expr { $$ = comp($2); }
          | '(' expr ')' { $$ = $2; }
+         | '(' error ')' { @$ = @2; SET_NODELOC(@2); }
 
            /* artihmetic operations */
          | expr '+' expr { $$ = plus($1, $3); }
